@@ -1,6 +1,5 @@
 package com.finpay.gateway.filter;
 
-
 import com.finpay.gateway.util.JwtUtil;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
@@ -16,27 +15,27 @@ import reactor.core.publisher.Mono;
 import java.nio.charset.StandardCharsets;
 
 @Component
-public class AuthenticationFilter extends AbstractGatewayFilterFactory<AuthenticationFilter.Config> {
+public class AuthenticationGatewayFilterFactory extends AbstractGatewayFilterFactory<AuthenticationGatewayFilterFactory.Config> {
 
     private final RouteValidator routeValidator;
     private final JwtUtil jwtUtil;
 
-    public AuthenticationFilter(RouteValidator routeValidator, JwtUtil jwtUtil) {
+    public AuthenticationGatewayFilterFactory(RouteValidator routeValidator, JwtUtil jwtUtil) {
         super(Config.class);
         this.routeValidator = routeValidator;
         this.jwtUtil = jwtUtil;
     }
 
     @Override
-    public GatewayFilter apply(AuthenticationFilter.Config config) {
+    public GatewayFilter apply(Config config) {
         return (exchange, chain) -> {
-            if(routeValidator.isSecured.test(exchange.getRequest())){
-                if(!exchange.getRequest().getHeaders().containsKey(HttpHeaders.AUTHORIZATION)){
-                    return  onError(exchange, "Missing Authorization header");
+            if (routeValidator.isSecured.test(exchange.getRequest())) {
+                if (!exchange.getRequest().getHeaders().containsKey(HttpHeaders.AUTHORIZATION)) {
+                    return onError(exchange, "Missing Authorization header");
                 }
 
-                String  authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-                if(authHeader == null || !authHeader.startsWith("Bearer")){
+                String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+                if (authHeader == null || !authHeader.startsWith("Bearer")) {
                     return onError(exchange, "Invalid Authorization header format");
                 }
 
@@ -45,9 +44,11 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
                     jwtUtil.validateToken(token);
                     String userId = jwtUtil.extractUserId(token);
 
-                    ServerWebExchange mutatedExchange = exchange.mutate().request(r -> r.header("X-User-Id",userId)).build();
+                    ServerWebExchange mutatedExchange = exchange.mutate()
+                            .request(r -> r.header("X-User-Id", userId))
+                            .build();
                     return chain.filter(mutatedExchange);
-                } catch (Exception e){
+                } catch (Exception e) {
                     return onError(exchange, "Invalid or expired token");
                 }
             }
@@ -60,14 +61,12 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
         response.setStatusCode(HttpStatus.UNAUTHORIZED);
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
-        String body = String.format(
-                "{\"message\":\"%s\",\"status\":401}", message);
+        String body = String.format("{\"message\":\"%s\",\"status\":401}", message);
         DataBuffer buffer = response.bufferFactory()
                 .wrap(body.getBytes(StandardCharsets.UTF_8));
         return response.writeWith(Mono.just(buffer));
     }
 
-    public static class Config{
-
+    public static class Config {
     }
 }

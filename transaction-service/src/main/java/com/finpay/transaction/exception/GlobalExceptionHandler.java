@@ -1,8 +1,9 @@
-package com.finpay.account.exception;
+package com.finpay.transaction.exception;
 
-import com.finpay.account.dto.ErrorResponse;
+import com.finpay.transaction.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -12,41 +13,39 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
-@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(AccountNotFoundException.class)
-    @ResponseStatus(HttpStatus.NOT_FOUND)
-    public ErrorResponse handleAccountNotFound(AccountNotFoundException ex, HttpServletRequest request) {
-        return build(ex.getMessage(), 404, request);
-    }
-
-    @ExceptionHandler(InSufficientBalanceException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ErrorResponse handleInsufficientBalance(InSufficientBalanceException ex, HttpServletRequest request) {
-        return build(ex.getMessage(), 400, request);
-    }
-
-    @ExceptionHandler(AccountFrozenException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ErrorResponse handleAccountFrozen(AccountFrozenException ex, HttpServletRequest request) {
-        return build(ex.getMessage(), 400, request);
-    }
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ErrorResponse handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
+    public ErrorResponse handleValidation(MethodArgumentNotValidException ex,
+                                          HttpServletRequest request) {
         String message = ex.getBindingResult().getFieldErrors().stream()
                 .map(e -> e.getField() + ": " + e.getDefaultMessage())
                 .collect(Collectors.joining(", "));
         return build(message, 400, request);
     }
 
+    @ExceptionHandler(DuplicateTransactionException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handleDuplicate(DuplicateTransactionException ex,
+                                         HttpServletRequest request) {
+        return build(ex.getMessage(), 409, request);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleIllegalArgument(IllegalArgumentException ex,
+                                               HttpServletRequest request) {
+        return build(ex.getMessage(), 400, request);
+    }
+
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ErrorResponse handleGeneral(Exception ex, HttpServletRequest request) {
-        log.error("Unhandled exception on {}: ", request.getRequestURI(), ex);
+        log.error("Unhandled exception at {}: {}", request.getRequestURI(), ex.getMessage(), ex);
         return build("An unexpected error occurred", 500, request);
     }
 

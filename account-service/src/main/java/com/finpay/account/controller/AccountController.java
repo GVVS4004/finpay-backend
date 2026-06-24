@@ -52,8 +52,9 @@ public class AccountController {
     @Operation(summary = "Deposit money into account")
     public AccountResponse deposit(
             @PathVariable String accountNumber,
+            @RequestHeader(name = "X-Idempotency-Key", required = false) String idempotencyKey,
             @Valid @RequestBody AmountRequest request) {
-        return accountService.deposit(accountNumber, request.getAmount());
+        return accountService.deposit(accountNumber, request.getAmount(), idempotencyKey);
     }
 
     @PutMapping("/{accountNumber}/withdraw")

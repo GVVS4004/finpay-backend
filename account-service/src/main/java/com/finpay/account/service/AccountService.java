@@ -2,6 +2,7 @@ package com.finpay.account.service;
 
 import com.finpay.account.domain.Account;
 import com.finpay.account.domain.AccountStatus;
+import com.finpay.account.domain.ProcessedTransaction;
 import com.finpay.account.dto.AccountResponse;
 import com.finpay.account.dto.BalanceResponse;
 import com.finpay.account.dto.CreateAccountRequest;
@@ -9,7 +10,9 @@ import com.finpay.account.exception.AccountFrozenException;
 import com.finpay.account.exception.AccountNotFoundException;
 import com.finpay.account.exception.InSufficientBalanceException;
 import com.finpay.account.repository.AccountRepository;
+import com.finpay.account.repository.ProcessedTransactionRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -19,10 +22,12 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AccountService {
     private final AccountRepository accountRepository;
+    private final ProcessedTransactionRepository processedTransactionRepository;
 
     public AccountResponse createAccount(Long userId, CreateAccountRequest request){
         Account account = Account.builder()
@@ -47,7 +52,7 @@ public class AccountService {
         return mapToResponse(findAccountOrThrow(accountNumber));
     }
 
-    @Cacheable(value = "balances", key ="#accountNumber")
+    @Cacheable(value = "balances", key = "#p0")
     public BalanceResponse getBalance(String accountNumber) {
         Account account = findAccountOrThrow(accountNumber);
         return BalanceResponse.builder()
@@ -58,8 +63,13 @@ public class AccountService {
                 .build();
     }
 
-    @CacheEvict(value = "balances", key = "#accountNumber")
-    public AccountResponse deposit(String accountNumber, BigDecimal amount) {
+    @CacheEvict(value = "balances", key = "#p0")
+    public AccountResponse deposit(String accountNumber, BigDecimal amount, String idempotencyKey) {
+        if (idempotencyKey != null && processedTransactionRepository.existsByIdempotencyKey(idempotencyKey)) {
+            log.warn("Duplicate deposit detected for idempotency key: {}. Skipping.", idempotencyKey);
+            return mapToResponse(findAccountOrThrow(accountNumber));
+        }
+
         Account account = findAccountOrThrow(accountNumber);
 
         if (account.getStatus() == AccountStatus.FROZEN) {
@@ -67,10 +77,20 @@ public class AccountService {
         }
 
         account.setBalance(account.getBalance().add(amount));
-        return mapToResponse(accountRepository.save(account));
+        AccountResponse response = mapToResponse(accountRepository.save(account));
+
+        if (idempotencyKey != null) {
+            processedTransactionRepository.save(ProcessedTransaction.builder()
+                    .idempotencyKey(idempotencyKey)
+                    .accountNumber(accountNumber)
+                    .operation("DEPOSIT")
+                    .build());
+        }
+
+        return response;
     }
 
-    @CacheEvict(value = "balances", key = "#accountNumber")
+    @CacheEvict(value = "balances", key = "#p0")
     public AccountResponse withdraw(String accountNumber, BigDecimal amount) {
         Account account = findAccountOrThrow(accountNumber);
 

@@ -13,7 +13,7 @@ spring:
   cloud:
     gateway:
       default-filters:
-        - AuthenticationFilter
+        - Authentication
       routes:
         - id: auth-service
           uri: lb://auth-service
@@ -21,6 +21,12 @@ spring:
             - Path=/api/auth/**
           filters:
             - StripPrefix=0
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 5
+                redis-rate-limiter.burstCapacity: 10
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userKeyResolver}"
 
         - id: account-service
           uri: lb://account-service
@@ -28,6 +34,12 @@ spring:
             - Path=/api/accounts/**
           filters:
             - StripPrefix=0
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userKeyResolver}"
 
         - id: transaction-service
           uri: lb://transaction-service
@@ -48,6 +60,12 @@ spring:
             - Path=/api/notifications/**
           filters:
             - StripPrefix=0
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 30
+                redis-rate-limiter.burstCapacity: 60
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userKeyResolver}"
 
 jwt:
   secret: ${JWT_SECRET:ZGV2LW9ubHktc2VjcmV0LWtleS1mb3ItZmluUGF5LTIwMjQ=}

@@ -1,15 +1,15 @@
 server:
-  port: 8082
+  port: 8083
 
 spring:
   application:
-    name: account-service
+    name: transaction-service
   autoconfigure:
     exclude:
       - org.springframework.cloud.gateway.config.GatewayClassPathWarningAutoConfiguration
       - org.springframework.cloud.gateway.config.GatewayAutoConfiguration
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/finpay_accounts}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/finpay_transactions}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
@@ -20,14 +20,9 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-  cache:
-    type: redis
   kafka:
     bootstrap-servers: ${KAFKA_SERVERS:localhost:9092}
+
 eureka:
   client:
     service-url:
@@ -35,8 +30,22 @@ eureka:
   instance:
     prefer-ip-address: true
 
+resilience4j:
+  circuitbreaker:
+    instances:
+      accountService:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-calls-in-half-open-state: 3
+        register-health-indicator: true
+
 management:
   endpoints:
     web:
       exposure:
-        include: health, info
+        include: health, info, circuitbreakers
+
+logging:
+  level:
+    com.finpay: INFO
