@@ -45,6 +45,7 @@ public class AccountServiceClient {
     public void withdraw(String accountNumber, BigDecimal amount){
         HttpHeaders headers = new HttpHeaders();
         headers.set("Content-Type", "application/json");
+        headers.set("X-Internal-Service", "transaction-service");
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(
                 Map.of("amount", amount), headers);
         restTemplate.put(ACCOUNT_SERVICE_URL + "/{accountNumber}/withdraw",
@@ -55,6 +56,7 @@ public class AccountServiceClient {
     public void deposit(String accountNumber, BigDecimal amount, String idempotencyKey){
         HttpHeaders headers = new HttpHeaders();
         headers.set("Content-Type", "application/json");
+        headers.set("X-Internal-Service", "transaction-service");
         if (idempotencyKey != null) {
             headers.set("X-Idempotency-Key", idempotencyKey);
         }

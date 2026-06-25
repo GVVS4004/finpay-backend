@@ -37,20 +37,22 @@ public class TransactionController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Deposit money into an account")
     public TransactionResponse deposit(
+            @RequestHeader("X-User-Id") Long userId,
             @RequestHeader(name = "X-Idempotency-Key", required = false) String idempotencyKey,
             @RequestParam @NotBlank String accountNumber,
             @RequestParam @NotNull @Positive BigDecimal amount) {
-        return transactionService.deposit(accountNumber, amount, idempotencyKey);
+        return transactionService.deposit(accountNumber, amount, userId, idempotencyKey);
     }
 
     @PostMapping("/withdraw")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Withdraw money from an account")
     public TransactionResponse withdraw(
+            @RequestHeader("X-User-Id") Long userId,
             @RequestHeader(name = "X-Idempotency-Key", required = false) String idempotencyKey,
             @RequestParam @NotBlank String accountNumber,
             @RequestParam @NotNull @Positive BigDecimal amount) {
-        return transactionService.withdraw(accountNumber, amount, idempotencyKey);
+        return transactionService.withdraw(accountNumber, amount, userId, idempotencyKey);
     }
 
     @GetMapping("/account/{accountNumber}")

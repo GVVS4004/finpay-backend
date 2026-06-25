@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class AccountResponse {
     private String accountNumber;
+    private Long userId;
     private String accountType;
     private String status;
 }

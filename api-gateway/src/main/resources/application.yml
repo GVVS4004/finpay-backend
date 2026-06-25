@@ -67,6 +67,16 @@ spring:
                 redis-rate-limiter.requestedTokens: 1
                 key-resolver: "#{@userKeyResolver}"
 
+        - id: notification-service-sse
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/notifications/stream
+          filters:
+            - StripPrefix=0
+          metadata:
+            response-timeout: -1
+            connect-timeout: 5000
+
 jwt:
   secret: ${JWT_SECRET:ZGV2LW9ubHktc2VjcmV0LWtleS1mb3ItZmluUGF5LTIwMjQ=}
 

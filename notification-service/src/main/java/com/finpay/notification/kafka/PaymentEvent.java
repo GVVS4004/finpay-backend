@@ -1,4 +1,4 @@
-package com.finpay.transaction.kafka;
+package com.finpay.notification.kafka;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PaymentEvent {
+
     private String transactionId;
     private String fromAccount;
     private String toAccount;

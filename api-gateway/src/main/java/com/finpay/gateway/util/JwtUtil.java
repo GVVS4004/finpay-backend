@@ -20,12 +20,18 @@ public class JwtUtil {
     }
 
     public String extractUserId(String token) {
-        Claims claims = Jwts.parserBuilder()
+        return extractClaims(token).get("userId", String.class);
+    }
+
+    public long extractExpiry(String token){
+        return extractClaims(token).getExpiration().getTime();
+    }
+    public Claims extractClaims(String token){
+        return Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
-        return claims.get("userId", String.class);
     }
 
     private Key getSigningKey(){

@@ -43,9 +43,12 @@ public class AuthenticationGatewayFilterFactory extends AbstractGatewayFilterFac
                 try {
                     jwtUtil.validateToken(token);
                     String userId = jwtUtil.extractUserId(token);
-
+                    long tokenExpiry = jwtUtil.extractExpiry(token);
                     ServerWebExchange mutatedExchange = exchange.mutate()
-                            .request(r -> r.header("X-User-Id", userId))
+                            .request(r -> r
+                                            .header("X-User-Id", userId)
+                                            .header("X-Token-Expiry", String.valueOf(tokenExpiry))
+                            )
                             .build();
                     return chain.filter(mutatedExchange);
                 } catch (Exception e) {

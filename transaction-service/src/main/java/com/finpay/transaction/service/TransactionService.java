@@ -132,19 +132,19 @@ public class TransactionService {
 
                 transaction.setStatus(TransactionStatus.FAILED);
                 transactionRepository.save(transaction);
-                publishEvent(transaction, TransactionStatus.FAILED);
+                publishEvent(transaction, TransactionStatus.FAILED, fromAccount.getUserId(), toAccount.getUserId());
                 throw new RuntimeException("Transfer failed: could not credit destination account");
             }
         }
 
         transaction.setStatus(TransactionStatus.COMPLETED);
         transactionRepository.save(transaction);
-        publishEvent(transaction, TransactionStatus.COMPLETED);
+        publishEvent(transaction, TransactionStatus.COMPLETED, fromAccount.getUserId(), toAccount.getUserId());
 
         return mapToResponse(transaction);
     }
 
-    public TransactionResponse deposit(String accountNumber, BigDecimal amount, String idempotencyKey) {
+    public TransactionResponse deposit(String accountNumber, BigDecimal amount, Long userId, String idempotencyKey) {
         if (idempotencyKey != null) {
             transactionRepository.findByIdempotencyKey(idempotencyKey)
                     .ifPresent(existing -> {
@@ -180,12 +180,12 @@ public class TransactionService {
 
         transaction.setStatus(TransactionStatus.COMPLETED);
         transactionRepository.save(transaction);
-        publishEvent(transaction, TransactionStatus.COMPLETED);
+        publishEvent(transaction, TransactionStatus.COMPLETED, userId, null);
 
         return mapToResponse(transaction);
     }
 
-    public TransactionResponse withdraw(String accountNumber, BigDecimal amount, String idempotencyKey) {
+    public TransactionResponse withdraw(String accountNumber, BigDecimal amount, Long userId, String idempotencyKey) {
         if (idempotencyKey != null) {
             transactionRepository.findByIdempotencyKey(idempotencyKey)
                     .ifPresent(existing -> {
@@ -220,7 +220,7 @@ public class TransactionService {
 
         transaction.setStatus(TransactionStatus.COMPLETED);
         transactionRepository.save(transaction);
-        publishEvent(transaction, TransactionStatus.COMPLETED);
+        publishEvent(transaction, TransactionStatus.COMPLETED, userId, null);
 
         return mapToResponse(transaction);
     }
@@ -246,11 +246,13 @@ public class TransactionService {
         return mapToResponse(transaction);
     }
 
-    private void publishEvent(Transaction transaction, TransactionStatus status) {
+    private void publishEvent(Transaction transaction, TransactionStatus status, Long fromUserId, Long toUserId) {
         PaymentEvent event = new PaymentEvent(
                 transaction.getTransactionId(),
                 transaction.getFromAccountNumber(),
                 transaction.getToAccountNumber(),
+                fromUserId,
+                toUserId,
                 transaction.getAmount(),
                 transaction.getType().name(),
                 status.name(),
