@@ -2,6 +2,7 @@ package com.finpay.account.config;
 
 
 import com.finpay.account.filter.InternalServiceFilter;
+import com.finpay.account.filter.RoleAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,6 +21,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final InternalServiceFilter internalServiceFilter;
+    private final RoleAuthenticationFilter roleAuthenticationFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -27,6 +29,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(internalServiceFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(roleAuthenticationFilter, InternalServiceFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .anyRequest().permitAll()
                 )

@@ -23,6 +23,10 @@ public class JwtUtil {
         return extractClaims(token).get("userId", String.class);
     }
 
+    public String extractRole(String token) {
+        return extractClaims(token).get("role", String.class);
+    }
+
     public long extractExpiry(String token){
         return extractClaims(token).getExpiration().getTime();
     }
