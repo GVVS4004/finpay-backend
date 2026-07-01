@@ -38,7 +38,7 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     healthcheck:
-      test: [ "CMD", "bash", "-c", "echo ruok | nc -w 2 localhost 2181" ]
+      test: ["CMD", "bash", "-c", "echo ruok | nc -w 2 localhost 2181"]
       interval: 10s
       timeout: 10s
       retries: 5
@@ -76,6 +76,140 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  service-registry:
+    build: ./service-registry
+    container_name: finpay-service-registry
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -S -O /dev/null http://localhost:8761/actuator/health 2>&1 | grep -q HTTP/ || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  auth-service:
+    build: ./auth-service
+    container_name: finpay-auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/finpay_auth
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      EUREKA_URL: http://service-registry:8761/eureka
+      JWT_SECRET: ZGV2LW9ubHktc2VjcmV0LWtleS1mb3ItZmluUGF5LTIwMjQ=
+    depends_on:
+      postgres:
+        condition: service_healthy
+      service-registry:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -S -O /dev/null http://localhost:8081/actuator/health 2>&1 | grep -q HTTP/ || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  account-service:
+    build: ./account-service
+    container_name: finpay-account-service
+    ports:
+      - "8082:8082"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/finpay_accounts
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      EUREKA_URL: http://service-registry:8761/eureka
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      service-registry:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -S -O /dev/null http://localhost:8082/actuator/health 2>&1 | grep -q HTTP/ || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  transaction-service:
+    build: ./transaction-service
+    container_name: finpay-transaction-service
+    ports:
+      - "8083:8083"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/finpay_transactions
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      EUREKA_URL: http://service-registry:8761/eureka
+      KAFKA_SERVERS: kafka:29092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      service-registry:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -S -O /dev/null http://localhost:8083/actuator/health 2>&1 | grep -q HTTP/ || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  notification-service:
+    build: ./notification-service
+    container_name: finpay-notification-service
+    ports:
+      - "8085:8085"
+    environment:
+      DB_HOST: postgres
+      DB_NAME: finpay_notifications
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      EUREKA_URL: http://service-registry:8761/eureka
+      KAFKA_SERVERS: kafka:29092
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      service-registry:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -S -O /dev/null http://localhost:8085/actuator/health 2>&1 | grep -q HTTP/ || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: finpay-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      EUREKA_URL: http://service-registry:8761/eureka
+      JWT_SECRET: ZGV2LW9ubHktc2VjcmV0LWtleS1mb3ItZmluUGF5LTIwMjQ=
+    depends_on:
+      service-registry:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -S -O /dev/null http://localhost:8080/actuator/health 2>&1 | grep -q HTTP/ || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
 volumes:
   postgres_data:
